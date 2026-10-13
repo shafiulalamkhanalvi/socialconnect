@@ -6,6 +6,14 @@ interface FieldSchema {
   label: string;
   required?: boolean;
   default?: any;
+  // "select" fields: either a flat list, or a dropdown whose options depend
+  // on another field's current value (e.g. GitHub's "operation" list changes
+  // based on which "resource" is selected) - this is what makes dropdowns
+  // like GitHub/AI Agent configurable from the generic schema alone, with no
+  // per-node-type UI code needed here.
+  options?: string[];
+  dependsOn?: string;
+  optionsMap?: Record<string, string[]>;
 }
 
 export default function NodeConfigPanel({
@@ -28,7 +36,20 @@ export default function NodeConfigPanel({
   useEffect(() => { api.listCredentials().then(setCredentials); }, []);
 
   function update(field: string, value: any) {
-    const next = { ...params, [field]: value };
+    const next: Record<string, any> = { ...params, [field]: value };
+    // If a field just changed and some OTHER field's dropdown options depend
+    // on it (e.g. changing GitHub's "resource" from issue -> file), and that
+    // dependent field's current value isn't valid for the new parent value
+    // anymore, snap it to the first valid option instead of leaving a stale/
+    // invalid selection sitting there silently.
+    for (const [depField, depDef] of Object.entries(schema)) {
+      if (depDef.dependsOn === field && depDef.optionsMap) {
+        const allowed = depDef.optionsMap[value] || [];
+        if (!allowed.includes(next[depField])) {
+          next[depField] = allowed[0] ?? "";
+        }
+      }
+    }
     setParams(next);
     onChange(node.id, next);
   }
@@ -86,6 +107,15 @@ export default function NodeConfigPanel({
             <select value={String(params[field] ?? def.default ?? false)} onChange={(e) => update(field, e.target.value === "true")}>
               <option value="false">No</option>
               <option value="true">Yes</option>
+            </select>
+          ) : def.type === "select" ? (
+            <select value={params[field] ?? def.default ?? ""} onChange={(e) => update(field, e.target.value)}>
+              {(def.dependsOn && def.optionsMap
+                ? def.optionsMap[params[def.dependsOn] ?? def.default ?? ""] || []
+                : def.options || []
+              ).map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
             </select>
           ) : (
             <input

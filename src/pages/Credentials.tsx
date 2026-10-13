@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api, isLoggedIn } from "../lib/api";
 
-const CREDENTIAL_TYPES: Record<string, { label: string; fields: string[] }> = {
-  anthropic: { label: "Anthropic (AI Agent node)", fields: ["apiKey"] },
+const CREDENTIAL_TYPES: Record<string, { label: string; fields: string[]; helpUrl?: string; helpText?: string }> = {
+  anthropic: { label: "Anthropic (AI Agent node)", fields: ["apiKey"], helpUrl: "https://console.anthropic.com/settings/keys", helpText: "Get an API key from the Anthropic Console" },
+  openrouter: { label: "OpenRouter (AI Agent node)", fields: ["apiKey"], helpUrl: "https://openrouter.ai/keys", helpText: "Get an API key from OpenRouter" },
+  github: { label: "GitHub (GitHub node)", fields: ["token"], helpUrl: "https://github.com/settings/tokens/new", helpText: "Create a Personal Access Token (classic) with repo scope" },
   slack: { label: "Slack", fields: ["botToken"] },
   smtp: { label: "SMTP (Email node)", fields: ["host", "port", "secure", "user", "pass", "from"] },
   httpHeaderAuth: { label: "Generic HTTP header auth", fields: ["headerName", "headerValue"] },
@@ -82,6 +84,14 @@ export default function CredentialsPage() {
             ))}
           </select>
         </div>
+        {schema.helpUrl && (
+          <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: -8 }}>
+            {schema.helpText || "Get your key here"}:{" "}
+            <a href={schema.helpUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>
+              {schema.helpUrl}
+            </a>
+          </div>
+        )}
         <div>
           <label>Name</label>
           <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="My Anthropic key" />
